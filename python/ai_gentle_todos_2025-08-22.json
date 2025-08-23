@@ -1,0 +1,17 @@
+[
+  {
+    "task": "Give him 3 credit cards to charge the payment",
+    "urgency": "today",
+    "category": "finance",
+    "confidence": "high",
+    "full_context": "Just give him our 3 credit cards and have him charge the payment. He can just swipe the cards twice to get the full amount.",
+    "specific_next_steps": "Provide the 3 credit cards to him",
+    "background": "Discussing how to handle a payment split between 3 people",
+    "people_involved": null,
+    "timeline_mentioned": null,
+    "dependencies": null,
+    "related_group": "payment_split",
+    "batch_number": 10,
+    "extraction_method": "ai"
+  }
+]

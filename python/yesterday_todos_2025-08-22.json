@@ -1,0 +1,542 @@
+[
+  {
+    "text": "figure it out here",
+    "full_context": "I'll figure it out here.",
+    "lifelog_id": "KAQJr4VzGD3PjmjOAacA",
+    "lifelog_title": "Initial Problem Solving and Work-Related Discussions",
+    "source_time": "2025-08-22T12:47:10-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.668581"
+  },
+  {
+    "text": "try it out",
+    "full_context": "I'll try it out.",
+    "lifelog_id": "ARHkXQPEbPSNB9b9F0rn",
+    "lifelog_title": "Personal Preparations, Errands, and Miscellaneous Conversations",
+    "source_time": "2025-08-22T12:50:22-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.668801"
+  },
+  {
+    "text": "tell him that",
+    "full_context": "I'll tell him that.",
+    "lifelog_id": "ARHkXQPEbPSNB9b9F0rn",
+    "lifelog_title": "Personal Preparations, Errands, and Miscellaneous Conversations",
+    "source_time": "2025-08-22T12:50:22-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.668862"
+  },
+  {
+    "text": "tell him Alana says Alana says",
+    "full_context": "I'll tell him Alana says Alana says",
+    "lifelog_id": "ARHkXQPEbPSNB9b9F0rn",
+    "lifelog_title": "Personal Preparations, Errands, and Miscellaneous Conversations",
+    "source_time": "2025-08-22T12:50:22-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.668888"
+  },
+  {
+    "text": "have to start a code",
+    "full_context": "I'll have to start a code.",
+    "lifelog_id": "ARHkXQPEbPSNB9b9F0rn",
+    "lifelog_title": "Personal Preparations, Errands, and Miscellaneous Conversations",
+    "source_time": "2025-08-22T12:50:22-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.668945"
+  },
+  {
+    "text": "get rice",
+    "full_context": "I'll get rice.",
+    "lifelog_id": "ARHkXQPEbPSNB9b9F0rn",
+    "lifelog_title": "Personal Preparations, Errands, and Miscellaneous Conversations",
+    "source_time": "2025-08-22T12:50:22-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.668982"
+  },
+  {
+    "text": "get this pork chop rice",
+    "full_context": "I'll get this pork chop rice.",
+    "lifelog_id": "ARHkXQPEbPSNB9b9F0rn",
+    "lifelog_title": "Personal Preparations, Errands, and Miscellaneous Conversations",
+    "source_time": "2025-08-22T12:50:22-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.669006"
+  },
+  {
+    "text": "try this",
+    "full_context": "I'll try this.",
+    "lifelog_id": "ARHkXQPEbPSNB9b9F0rn",
+    "lifelog_title": "Personal Preparations, Errands, and Miscellaneous Conversations",
+    "source_time": "2025-08-22T12:50:22-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.669041"
+  },
+  {
+    "text": "just get this",
+    "full_context": "I'll just get this.",
+    "lifelog_id": "ARHkXQPEbPSNB9b9F0rn",
+    "lifelog_title": "Personal Preparations, Errands, and Miscellaneous Conversations",
+    "source_time": "2025-08-22T12:50:22-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.669066"
+  },
+  {
+    "text": "get one of these",
+    "full_context": "I'll get one of these.",
+    "lifelog_id": "ARHkXQPEbPSNB9b9F0rn",
+    "lifelog_title": "Personal Preparations, Errands, and Miscellaneous Conversations",
+    "source_time": "2025-08-22T12:50:22-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.669090"
+  },
+  {
+    "text": "go 50%",
+    "full_context": "I'll go 50%.",
+    "lifelog_id": "ARHkXQPEbPSNB9b9F0rn",
+    "lifelog_title": "Personal Preparations, Errands, and Miscellaneous Conversations",
+    "source_time": "2025-08-22T12:50:22-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.669110"
+  },
+  {
+    "text": "live alone",
+    "full_context": "I need to live alone.",
+    "lifelog_id": "mgfOsfqpHgiVhmajJANI",
+    "lifelog_title": "Weekend social plans, a problematic Vegas trip, and personal relationship reflections",
+    "source_time": "2025-08-22T13:23:45-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.670118"
+  },
+  {
+    "text": "only ask",
+    "full_context": "I'll only ask.",
+    "lifelog_id": "mgfOsfqpHgiVhmajJANI",
+    "lifelog_title": "Weekend social plans, a problematic Vegas trip, and personal relationship reflections",
+    "source_time": "2025-08-22T13:23:45-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.670208"
+  },
+  {
+    "text": "I'll fix it later",
+    "full_context": "I'll I'll fix it later.",
+    "lifelog_id": "mgfOsfqpHgiVhmajJANI",
+    "lifelog_title": "Weekend social plans, a problematic Vegas trip, and personal relationship reflections",
+    "source_time": "2025-08-22T13:23:45-04:00",
+    "urgency": "normal",
+    "category": "home",
+    "extracted_at": "2025-08-23T00:23:33.670352"
+  },
+  {
+    "text": "just tell them what's going on",
+    "full_context": "I'll just tell them what's going on.",
+    "lifelog_id": "mgfOsfqpHgiVhmajJANI",
+    "lifelog_title": "Weekend social plans, a problematic Vegas trip, and personal relationship reflections",
+    "source_time": "2025-08-22T13:23:45-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.670388"
+  },
+  {
+    "text": "be the one that has to apologize first",
+    "full_context": "I should be the one that has to apologize first.",
+    "lifelog_id": "mgfOsfqpHgiVhmajJANI",
+    "lifelog_title": "Weekend social plans, a problematic Vegas trip, and personal relationship reflections",
+    "source_time": "2025-08-22T13:23:45-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.670542"
+  },
+  {
+    "text": "restart",
+    "full_context": "I have to restart.",
+    "lifelog_id": "mgfOsfqpHgiVhmajJANI",
+    "lifelog_title": "Weekend social plans, a problematic Vegas trip, and personal relationship reflections",
+    "source_time": "2025-08-22T13:23:45-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.670746"
+  },
+  {
+    "text": "try to make my parents like say more \u60c5\u7dd2\u50f9\u503c",
+    "full_context": "I'm going to try to make my parents like say more \u60c5\u7dd2\u50f9\u503c,",
+    "lifelog_id": "GH925Bu9Mi3ws0if0Dp3",
+    "lifelog_title": "A detailed discussion about navigating family dynamics, parental expectations, and financial responsibilities within a relationship, interspersed with brief unrelated exchanges.",
+    "source_time": "2025-08-22T13:45:57-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.672050"
+  },
+  {
+    "text": "tell them that today",
+    "full_context": "I'm going to tell them that today.",
+    "lifelog_id": "GH925Bu9Mi3ws0if0Dp3",
+    "lifelog_title": "A detailed discussion about navigating family dynamics, parental expectations, and financial responsibilities within a relationship, interspersed with brief unrelated exchanges.",
+    "source_time": "2025-08-22T13:45:57-04:00",
+    "urgency": "today",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.672073"
+  },
+  {
+    "text": "spit out my cucumber",
+    "full_context": "I'm going to spit out my cucumber.",
+    "lifelog_id": "GH925Bu9Mi3ws0if0Dp3",
+    "lifelog_title": "A detailed discussion about navigating family dynamics, parental expectations, and financial responsibilities within a relationship, interspersed with brief unrelated exchanges.",
+    "source_time": "2025-08-22T13:45:57-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.672136"
+  },
+  {
+    "text": "hold you by your back",
+    "full_context": "I'll hold you by your back.",
+    "lifelog_id": "XrQtxLZnZvBXKyZVT4mO",
+    "lifelog_title": "Subway Public Service Announcements and Operational Information",
+    "source_time": "2025-08-22T13:57:58-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.672881"
+  },
+  {
+    "text": "everybody",
+    "full_context": "I'm going to everybody.",
+    "lifelog_id": "oo6nt1nNpMCgeUvy4IjQ",
+    "lifelog_title": "Discussions at a Sports Event",
+    "source_time": "2025-08-22T14:30:35-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.674215"
+  },
+  {
+    "text": "read it",
+    "full_context": "I need to read it.",
+    "lifelog_id": "kq6jt4aLByn5VNCk9SRo",
+    "lifelog_title": "Miscellaneous conversations on costs, exams, and publishing",
+    "source_time": "2025-08-22T15:38:01-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.676123"
+  },
+  {
+    "text": "be going there",
+    "full_context": "I'll be going there.",
+    "lifelog_id": "kq6jt4aLByn5VNCk9SRo",
+    "lifelog_title": "Miscellaneous conversations on costs, exams, and publishing",
+    "source_time": "2025-08-22T15:38:01-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.676480"
+  },
+  {
+    "text": "tell them to publish",
+    "full_context": "I'll tell them to publish.",
+    "lifelog_id": "kq6jt4aLByn5VNCk9SRo",
+    "lifelog_title": "Miscellaneous conversations on costs, exams, and publishing",
+    "source_time": "2025-08-22T15:38:01-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.676527"
+  },
+  {
+    "text": "be honest",
+    "full_context": "I'll be honest,",
+    "lifelog_id": "kq6jt4aLByn5VNCk9SRo",
+    "lifelog_title": "Miscellaneous conversations on costs, exams, and publishing",
+    "source_time": "2025-08-22T15:38:01-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.676557"
+  },
+  {
+    "text": "buy these that are like three months old",
+    "full_context": "I have to buy these that are like three months old.",
+    "lifelog_id": "kq6jt4aLByn5VNCk9SRo",
+    "lifelog_title": "Miscellaneous conversations on costs, exams, and publishing",
+    "source_time": "2025-08-22T15:38:01-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.676959"
+  },
+  {
+    "text": "I have to I already have that one actually",
+    "full_context": "I have to I have to I already have that one actually.",
+    "lifelog_id": "oPf5i5iRSufRgiVVj5US",
+    "lifelog_title": "Discussions on various daily topics and merchandise",
+    "source_time": "2025-08-22T17:09:28-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.678964"
+  },
+  {
+    "text": "go with that",
+    "full_context": "I'm going to go with that.",
+    "lifelog_id": "oPf5i5iRSufRgiVVj5US",
+    "lifelog_title": "Discussions on various daily topics and merchandise",
+    "source_time": "2025-08-22T17:09:28-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.679050"
+  },
+  {
+    "text": "keep it longer",
+    "full_context": "I'll keep it longer.",
+    "lifelog_id": "kf5ZRM1P25lFuLefjOzE",
+    "lifelog_title": "English conversations covering personal relationships, work, and future plans",
+    "source_time": "2025-08-22T21:29:59-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.688936"
+  },
+  {
+    "text": "be getting hurt",
+    "full_context": "I'll be getting hurt,",
+    "lifelog_id": "kf5ZRM1P25lFuLefjOzE",
+    "lifelog_title": "English conversations covering personal relationships, work, and future plans",
+    "source_time": "2025-08-22T21:29:59-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.689004"
+  },
+  {
+    "text": "fight over?",
+    "full_context": "I have to fight over?",
+    "lifelog_id": "kf5ZRM1P25lFuLefjOzE",
+    "lifelog_title": "English conversations covering personal relationships, work, and future plans",
+    "source_time": "2025-08-22T21:29:59-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.689243"
+  },
+  {
+    "text": "Island Dawson",
+    "full_context": "I'm going to Island Dawson.",
+    "lifelog_id": "kf5ZRM1P25lFuLefjOzE",
+    "lifelog_title": "English conversations covering personal relationships, work, and future plans",
+    "source_time": "2025-08-22T21:29:59-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.689402"
+  },
+  {
+    "text": "have that first champagne",
+    "full_context": "I'll have that first champagne.",
+    "lifelog_id": "iey96Y3FQmKgurLKIhLG",
+    "lifelog_title": "Recounting a memorable and expensive night out in Miami",
+    "source_time": "2025-08-22T21:48:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.690129"
+  },
+  {
+    "text": "give you money",
+    "full_context": "I'm going to give you money.",
+    "lifelog_id": "iey96Y3FQmKgurLKIhLG",
+    "lifelog_title": "Recounting a memorable and expensive night out in Miami",
+    "source_time": "2025-08-22T21:48:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.690359"
+  },
+  {
+    "text": "wash my hands",
+    "full_context": "I need to wash my hands.",
+    "lifelog_id": "43uBDXtszXIcYBJcEVta",
+    "lifelog_title": "Discussion about upcoming travel plans",
+    "source_time": "2025-08-22T21:54:20-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.690987"
+  },
+  {
+    "text": "grab one and stop it on my head",
+    "full_context": "I'm going to grab one and stop it on my head.",
+    "lifelog_id": "43uBDXtszXIcYBJcEVta",
+    "lifelog_title": "Discussion about upcoming travel plans",
+    "source_time": "2025-08-22T21:54:20-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.691182"
+  },
+  {
+    "text": "sell my uh",
+    "full_context": "I'm going to sell my uh,",
+    "lifelog_id": "MoB0whbDEQ6MF4vxOntt",
+    "lifelog_title": "Discussion about selling digital assets",
+    "source_time": "2025-08-22T21:56:07-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.691444"
+  },
+  {
+    "text": "sell my Zuki",
+    "full_context": "I'm going to sell my Zuki.",
+    "lifelog_id": "MoB0whbDEQ6MF4vxOntt",
+    "lifelog_title": "Discussion about selling digital assets",
+    "source_time": "2025-08-22T21:56:07-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.691471"
+  },
+  {
+    "text": "wake up like at 5:00",
+    "full_context": "I need to wake up like at 5:00.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.692427"
+  },
+  {
+    "text": "just be nice",
+    "full_context": "I'll just be nice,",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.692652"
+  },
+  {
+    "text": "show you",
+    "full_context": "I'll show you.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.692785"
+  },
+  {
+    "text": "go there and hit against the wall",
+    "full_context": "I'll go there and hit against the wall.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.692817"
+  },
+  {
+    "text": "just show up early",
+    "full_context": "I'll just show up early.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.692849"
+  },
+  {
+    "text": "go there and I'll be there like at 6:15",
+    "full_context": "I'll go there and I'll be there like at 6:15.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.693227"
+  },
+  {
+    "text": "die anymore",
+    "full_context": "I'm going to die anymore.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.695384"
+  },
+  {
+    "text": "worry I guess now",
+    "full_context": "I'm going to worry I guess now.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.695446"
+  },
+  {
+    "text": "master",
+    "full_context": "I'm going to master.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.695663"
+  },
+  {
+    "text": "change it",
+    "full_context": "I'm going to change it.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.695851"
+  },
+  {
+    "text": "change my LinkedIn title",
+    "full_context": "I'm going to change my LinkedIn title.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.695949"
+  },
+  {
+    "text": "change it right now",
+    "full_context": "I'm going to change it right now.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.696016"
+  },
+  {
+    "text": "head back in a bit",
+    "full_context": "I'm going to head back in a bit.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.696434"
+  },
+  {
+    "text": "head down",
+    "full_context": "I'm going to head down.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.696693"
+  },
+  {
+    "text": "head out",
+    "full_context": "I'm going to head out.",
+    "lifelog_id": "C4poKnKX3QjRGs7VP5mA",
+    "lifelog_title": "A conversation about personal connections and privacy",
+    "source_time": "2025-08-22T21:58:12-04:00",
+    "urgency": "normal",
+    "category": "general",
+    "extracted_at": "2025-08-23T00:23:33.696804"
+  }
+]
