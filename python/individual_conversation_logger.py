@@ -12,6 +12,8 @@ This script:
 import os
 import json
 import time
+import sys
+import argparse
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import anthropic
@@ -255,7 +257,32 @@ def clear_existing_events(calendar_manager, calendar_id, target_date):
     except Exception as e:
         print(f"⚠️ Failed to clear existing events: {e}")
 
-def log_individual_conversations():
+def parse_date_argument(date_arg):
+    """Parse date argument - can be YYYY-MM-DD, negative number for days ago, or None for yesterday"""
+    if date_arg is None:
+        # Default to yesterday
+        return datetime.now().date() - timedelta(days=1)
+    
+    # Check if it's a negative number (days ago)
+    try:
+        days_ago = int(date_arg)
+        if days_ago <= 0:
+            return datetime.now().date() + timedelta(days=days_ago)
+        else:
+            print(f"⚠️ Please use negative numbers for days ago (e.g., -3 for 3 days ago)")
+            sys.exit(1)
+    except ValueError:
+        pass
+    
+    # Try to parse as YYYY-MM-DD
+    try:
+        return datetime.strptime(date_arg, '%Y-%m-%d').date()
+    except ValueError:
+        print(f"❌ Invalid date format: '{date_arg}'")
+        print("📝 Use YYYY-MM-DD format (e.g., 2025-08-20) or negative number for days ago (e.g., -3)")
+        sys.exit(1)
+
+def log_individual_conversations(target_date):
     """Main function to create individual calendar events for each conversation"""
     
     # Get API key
@@ -264,21 +291,32 @@ def log_individual_conversations():
         print("❌ LIMITLESS_API_KEY not found in .env file")
         return
     
-    # Calculate yesterday's date
-    yesterday = (datetime.now().date() - timedelta(days=1)).strftime('%Y-%m-%d')
-    print(f"📅 Processing individual conversations from {yesterday}")
+    # Format date for display and API
+    date_str = target_date.strftime('%Y-%m-%d')
+    days_ago = (datetime.now().date() - target_date).days
     
-    # Fetch lifelogs from yesterday
+    if days_ago == 0:
+        date_description = "today"
+    elif days_ago == 1:
+        date_description = "yesterday"
+    elif days_ago > 1:
+        date_description = f"{days_ago} days ago"
+    else:
+        date_description = f"in {-days_ago} days (future date!)"
+    
+    print(f"📅 Processing individual conversations from {date_str} ({date_description})")
+    
+    # Fetch lifelogs from target date
     print(f"\n🔍 Fetching conversations from Limitless API...")
     lifelogs = get_lifelogs(
         api_key=api_key,
-        date=yesterday,
+        date=date_str,
         includeMarkdown=True,
         limit=100  # Get more to ensure we capture the full day
     )
     
     if not lifelogs:
-        print("❌ No conversations found for yesterday")
+        print(f"❌ No conversations found for {date_str}")
         return
     
     print(f"📊 Found {len(lifelogs)} total conversations")
@@ -320,8 +358,7 @@ def log_individual_conversations():
         return
     
     # Clear existing events for this date to avoid duplicates
-    yesterday_date = datetime.now().date() - timedelta(days=1)
-    clear_existing_events(calendar_manager, conversations_calendar_id, yesterday_date)
+    clear_existing_events(calendar_manager, conversations_calendar_id, target_date)
     
     # Process each conversation individually
     print(f"\n🤖 Processing each conversation with Claude for structured summaries...")
@@ -367,4 +404,30 @@ def log_individual_conversations():
     print(f"📅 Check your 'Conversations' calendar for the complete day view")
 
 if __name__ == "__main__":
-    log_individual_conversations()
+    # Set up argument parser
+    parser = argparse.ArgumentParser(
+        description="Log individual conversations from Limitless to Google Calendar",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python3 individual_conversation_logger.py              # Process yesterday (default)
+  python3 individual_conversation_logger.py 2025-08-20   # Process specific date
+  python3 individual_conversation_logger.py -3           # Process 3 days ago
+  python3 individual_conversation_logger.py -7           # Process a week ago
+        """
+    )
+    
+    parser.add_argument(
+        'date',
+        nargs='?',  # Optional argument
+        default=None,
+        help='Date to process: YYYY-MM-DD format or negative number for days ago (default: yesterday)'
+    )
+    
+    args = parser.parse_args()
+    
+    # Parse the date argument
+    target_date = parse_date_argument(args.date)
+    
+    # Run the main function
+    log_individual_conversations(target_date)
