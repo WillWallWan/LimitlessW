@@ -151,9 +151,29 @@ def create_individual_calendar_event(lifelog, summary, calendar_manager, calenda
                 if isinstance(content, str):
                     return content
                 elif isinstance(content, dict):
-                    return json.dumps(content, indent=2)
+                    # Format dictionary as readable text instead of JSON
+                    formatted_items = []
+                    for key, value in content.items():
+                        # Capitalize and format the key nicely
+                        formatted_key = key.replace('_', ' ').title()
+                        if isinstance(value, list):
+                            # Format list values with bullet points
+                            list_items = "\n  ".join(f"• {item}" for item in value)
+                            formatted_items.append(f"{formatted_key}:\n  {list_items}")
+                        else:
+                            formatted_items.append(f"• {formatted_key}: {value}")
+                    return "\n".join(formatted_items)
                 elif isinstance(content, list):
-                    return "\n".join(f"• {item}" for item in content)
+                    # Handle list of strings or list of dicts
+                    formatted_items = []
+                    for item in content:
+                        if isinstance(item, dict):
+                            # Format each dict item
+                            dict_parts = [f"{k}: {v}" for k, v in item.items()]
+                            formatted_items.append(f"• {', '.join(dict_parts)}")
+                        else:
+                            formatted_items.append(f"• {item}")
+                    return "\n".join(formatted_items)
                 return str(content)
 
             if is_meaningful_content(key_information):
