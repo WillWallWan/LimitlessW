@@ -31,21 +31,29 @@ from individual_conversation_logger import (
     clear_existing_events
 )
 
+# Import daily summary functions
+from daily_summary_calendar import (
+    process_day_summary,
+    clear_existing_daily_summary
+)
+
 class EnhancedBatchLogger:
     """Enhanced batch processor with intelligent rate limit handling"""
     
-    def __init__(self):
+    def __init__(self, create_daily_summaries=False):
         self.api_key = os.getenv('LIMITLESS_API_KEY')
         self.anthropic_key = os.getenv('ANTHROPIC_API_KEY')
         self.calendar_manager = None
         self.conversations_calendar_id = None
         self.claude_client = None
+        self.create_daily_summaries = create_daily_summaries
         self.stats = {
             'total_days': 0,
             'successful_days': 0,
             'failed_days': 0,
             'total_conversations': 0,
             'total_events_created': 0,
+            'daily_summaries_created': 0,
             'rate_limit_retries': 0,
             'failed_summaries': 0,
             'errors': []
@@ -55,6 +63,8 @@ class EnhancedBatchLogger:
         self.current_delay = self.base_delay
         self.max_retries = 3
         self.backoff_multiplier = 2
+        self.consecutive_errors = 0  # Track consecutive errors
+        self.overload_cooldown = False  # Flag for server overload state
     
     def initialize(self):
         """Initialize API keys and services"""
@@ -126,15 +136,58 @@ class EnhancedBatchLogger:
             
             try:
                 summary_data = json.loads(response_text)
-                # Reset delay on success
+                # Reset delay and error tracking on success
                 self.current_delay = self.base_delay
+                self.consecutive_errors = 0
+                self.overload_cooldown = False
                 return summary_data
             except json.JSONDecodeError as e:
                 print(f"⚠️ JSON parse error for '{title}': {e}")
+                
+                # Try to extract JSON from the response if it's mixed with text
+                import re
+                # Look for JSON object with proper structure
+                json_patterns = [
+                    r'\{[^{}]*"description"[^{}]*\}',  # Simple JSON with description
+                    r'\{[\s\S]*?"description"[\s\S]*?\}(?=\s*$)',  # JSON at end of text
+                    r'```json\s*(\{[\s\S]*?\})\s*```',  # JSON in code blocks
+                    r'\{[\s\S]*\}'  # Last resort - any JSON-like structure
+                ]
+                
+                json_match = None
+                for pattern in json_patterns:
+                    match = re.search(pattern, response_text, re.MULTILINE)
+                    if match:
+                        json_match = match
+                        break
+                
+                if json_match:
+                    try:
+                        # Use group(1) if it exists (for code block pattern), otherwise group()
+                        json_text = json_match.group(1) if json_match.groups() else json_match.group()
+                        summary_data = json.loads(json_text)
+                        print(f"   ✅ Recovered JSON from mixed response")
+                        return summary_data
+                    except:
+                        pass
+                
+                # Try to build a summary from the text content
+                lines = response_text.strip().split('\n')
+                description = ""
+                
+                # Look for key phrases in the response
+                for line in lines:
+                    if any(phrase in line.lower() for phrase in ['summary:', 'overview:', 'description:']):
+                        description = line.split(':', 1)[-1].strip()
+                        break
+                
+                if not description:
+                    description = response_text[:200] + "..." if len(response_text) > 200 else response_text
+                
                 # Return a basic structure if JSON parsing fails
                 return {
-                    "description": response_text[:200] + "..." if len(response_text) > 200 else response_text,
-                    "key_information": "None",
+                    "description": description,
+                    "key_information": "AI response was not properly formatted",
                     "decisions_made": "None", 
                     "problems_solutions": "None",
                     "people_involved": "None",
@@ -169,8 +222,24 @@ class EnhancedBatchLogger:
                 return None
         
         except Exception as e:
+            # Handle Anthropic overloaded errors (529) and other API errors
+            error_str = str(e)
+            
+            # Check for overloaded error or other retryable conditions
+            if any(err in error_str.lower() for err in ['overloaded', '529', 'timeout', 'connection']):
+                self.consecutive_errors += 1
+                self.overload_cooldown = True
+                
+                if attempt <= self.max_retries:
+                    # Longer delay for overloaded errors
+                    retry_delay = 30 * attempt  # 30s, 60s, 90s
+                    print(f"   ⏳ Server overloaded. Waiting {retry_delay}s before retry {attempt}/{self.max_retries}...")
+                    time.sleep(retry_delay)
+                    return self.summarize_with_retry(markdown, title, attempt + 1)
+            
+            # For non-retryable errors, log and return None
             print(f"❌ Error summarizing '{title}': {e}")
-            self.stats['errors'].append(f"Summary failed for '{title}': {str(e)}")
+            self.stats['errors'].append(f"Summary failed for '{title}': {error_str}")
             return None
     
     def process_single_day(self, target_date: date) -> Tuple[bool, int, int]:
@@ -212,6 +281,10 @@ class EnhancedBatchLogger:
             # Clear existing events for this date
             clear_existing_events(self.calendar_manager, self.conversations_calendar_id, target_date)
             
+            # If daily summaries enabled, clear existing daily summary too
+            if self.create_daily_summaries:
+                clear_existing_daily_summary(self.calendar_manager, self.conversations_calendar_id, target_date)
+            
             # Process each conversation with intelligent rate limiting
             created_count = 0
             for i, lifelog in enumerate(meaningful_conversations, 1):
@@ -232,9 +305,32 @@ class EnhancedBatchLogger:
                 # Dynamic delay based on content size and current rate limit status
                 if i < len(meaningful_conversations):
                     delay = self.calculate_dynamic_delay(markdown)
-                    # Use the maximum of calculated delay and current delay (which may be elevated due to rate limits)
+                    
+                    # If we're in overload cooldown, add extra delay
+                    if self.overload_cooldown:
+                        delay = max(delay * 2, 10)  # Double delay, minimum 10s
+                        
+                    # If we've had multiple consecutive errors, be more conservative
+                    if self.consecutive_errors > 2:
+                        delay = max(delay, 15)  # Minimum 15s after multiple errors
+                    
+                    # Use the maximum of calculated delay and current delay
                     actual_delay = max(delay, self.current_delay)
                     time.sleep(actual_delay)
+            
+            # Create daily summary if enabled
+            if self.create_daily_summaries and meaningful_conversations:
+                print(f"   📊 Creating daily summary...")
+                if process_day_summary(
+                    meaningful_conversations, 
+                    target_date, 
+                    self.calendar_manager, 
+                    self.conversations_calendar_id
+                ):
+                    self.stats['daily_summaries_created'] += 1
+                    print(f"   ✅ Daily summary created")
+                else:
+                    print(f"   ⚠️ Failed to create daily summary")
             
             return True, created_count, len(meaningful_conversations)
             
@@ -267,6 +363,10 @@ class EnhancedBatchLogger:
             
             print(f"\n📆 [{i}/{len(dates)}] Processing {date_str} ({date_desc})")
             print("-" * 40)
+            
+            # Show server status if in cooldown
+            if self.overload_cooldown:
+                print("   ⚠️ Server stress detected - using conservative delays")
             
             # Process the day
             success, events_created, conversations_found = self.process_single_day(target_date)
@@ -321,6 +421,10 @@ class EnhancedBatchLogger:
         print(f"   • Automatic Retries: {self.stats['rate_limit_retries']}")
         if self.stats['failed_summaries'] > 0:
             print(f"   • Failed Summaries: {self.stats['failed_summaries']} (created with basic titles)")
+        
+        if self.create_daily_summaries:
+            print(f"\n📅 Daily Summaries:")
+            print(f"   • Created: {self.stats['daily_summaries_created']} all-day events")
         
         if self.stats['errors']:
             print(f"\n⚠️ Errors Encountered:")
@@ -405,22 +509,23 @@ Enhanced Features:
   ✅ Dynamic delays based on conversation length
   ✅ Graceful degradation (creates events even if AI summary fails)
   ✅ Detailed progress and error reporting
+  ✅ Optional daily summary all-day events
 
 Examples:
   # Process yesterday (default)
-  python3 batch_conversation_logger_enhanced.py
+  python3 batch_conversation_logger.py
   
-  # Process last 7 days with rate limit protection
-  python3 batch_conversation_logger_enhanced.py --last 7
+  # Process last 7 days with daily summaries
+  python3 batch_conversation_logger.py --last 7 --daily-summary
   
   # Process specific date range
-  python3 batch_conversation_logger_enhanced.py --from 2025-08-15 --to 2025-08-20
+  python3 batch_conversation_logger.py --from 2025-08-15 --to 2025-08-20
   
-  # Process multiple specific dates
-  python3 batch_conversation_logger_enhanced.py 2025-08-18 2025-08-19 2025-08-20
+  # Process multiple dates with daily summaries
+  python3 batch_conversation_logger.py 2025-08-18 2025-08-19 --daily-summary
   
   # Mix formats: specific dates and days ago
-  python3 batch_conversation_logger_enhanced.py 2025-08-18 -3 -7
+  python3 batch_conversation_logger.py 2025-08-18 -3 -7
         """
     )
     
@@ -452,6 +557,12 @@ Examples:
         help='End date for range (YYYY-MM-DD format), defaults to --from date if not specified'
     )
     
+    parser.add_argument(
+        '--daily-summary',
+        action='store_true',
+        help='Create all-day summary events for each processed day'
+    )
+    
     args = parser.parse_args()
     
     # Parse dates from arguments
@@ -462,7 +573,7 @@ Examples:
         sys.exit(1)
     
     # Create and initialize the enhanced logger
-    logger = EnhancedBatchLogger()
+    logger = EnhancedBatchLogger(create_daily_summaries=args.daily_summary)
     if not logger.initialize():
         sys.exit(1)
     
