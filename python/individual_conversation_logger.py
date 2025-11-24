@@ -68,7 +68,7 @@ def summarize_individual_conversation(conversation_content, conversation_title):
     try:
         # Call Claude API
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-sonnet-4-5-20250929",
             max_tokens=1000,
             temperature=0.3,
             messages=[
@@ -82,6 +82,17 @@ def summarize_individual_conversation(conversation_content, conversation_title):
         # Extract and parse the response
         response_text = message.content[0].text.strip()
         
+        # Claude 4.5 often wraps JSON in markdown code blocks
+        import re
+        code_block_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', response_text, re.MULTILINE)
+        if code_block_match:
+            try:
+                summary_data = json.loads(code_block_match.group(1))
+                return summary_data
+            except json.JSONDecodeError:
+                pass
+        
+        # Try pure JSON parse
         try:
             summary_data = json.loads(response_text)
             return summary_data
@@ -245,10 +256,13 @@ Note: AI summary unavailable for this conversation.
 def clear_existing_events(calendar_manager, calendar_id, target_date):
     """Clear existing events from the Conversations calendar for the target date"""
     try:
-        # Get events for the specific date
+        # Get events for the specific date - query a wider range to catch all timezones
         date_str = target_date.strftime('%Y-%m-%d')
-        time_min = f"{date_str}T00:00:00Z"
-        time_max = f"{date_str}T23:59:59Z"
+        # Query from previous day to next day to ensure we catch all events
+        prev_day = (target_date - timedelta(days=1)).strftime('%Y-%m-%d')
+        next_day = (target_date + timedelta(days=1)).strftime('%Y-%m-%d')
+        time_min = f"{prev_day}T00:00:00Z"
+        time_max = f"{next_day}T23:59:59Z"
         
         events_result = calendar_manager.calendar_service.events().list(
             calendarId=calendar_id,
@@ -258,21 +272,65 @@ def clear_existing_events(calendar_manager, calendar_id, target_date):
             orderBy='startTime'
         ).execute()
         
-        events = events_result.get('items', [])
+        all_events = events_result.get('items', [])
+        
+        print(f"   🔍 Found {len(all_events)} total events in range, filtering to {date_str}...")
+        
+        # Filter to only events that actually occur on the target date
+        events = []
+        for event in all_events:
+            event_start = event.get('start', {})
+            # For timed events, check if the date part matches
+            if 'dateTime' in event_start:
+                try:
+                    event_dt = datetime.fromisoformat(event_start['dateTime'].replace('Z', '+00:00'))
+                    if event_dt.date() == target_date:
+                        events.append(event)
+                except Exception as e:
+                    print(f"   ⚠️ Error parsing event date: {e}")
+                    pass
+            # For all-day events, check the date field
+            elif 'date' in event_start:
+                if event_start['date'] == date_str:
+                    events.append(event)
+        
+        print(f"   📊 Filtered to {len(events)} events on {date_str}")
         
         if events:
-            print(f"🗑️ Clearing {len(events)} existing events from {date_str}...")
+            # Filter out daily summary events
+            events_to_delete = []
+            preserved_summaries = 0
+            
             for event in events:
-                try:
-                    calendar_manager.calendar_service.events().delete(
-                        calendarId=calendar_id,
-                        eventId=event['id']
-                    ).execute()
-                except Exception as e:
-                    print(f"⚠️ Failed to delete event: {e}")
-            print(f"✅ Cleared existing events")
-        else:
-            print(f"ℹ️ No existing events found for {date_str}")
+                # Check if this is a daily summary event
+                summary = event.get('summary', '')
+                is_all_day = 'date' in event.get('start', {})
+                
+                # Preserve daily summary events
+                if 'Daily Summary' in summary and is_all_day:
+                    preserved_summaries += 1
+                else:
+                    events_to_delete.append(event)
+            
+            if events_to_delete:
+                print(f"🗑️ Clearing {len(events_to_delete)} existing events from {date_str}...")
+                if preserved_summaries > 0:
+                    print(f"   📅 Preserving {preserved_summaries} daily summary event(s)")
+                    
+                for event in events_to_delete:
+                    try:
+                        calendar_manager.calendar_service.events().delete(
+                            calendarId=calendar_id,
+                            eventId=event['id']
+                        ).execute()
+                    except Exception as e:
+                        print(f"⚠️ Failed to delete event: {e}")
+                print(f"✅ Cleared existing events")
+            else:
+                if preserved_summaries > 0:
+                    print(f"ℹ️ Only daily summary found for {date_str}, preserving it")
+                else:
+                    print(f"ℹ️ No existing events found for {date_str}")
             
     except Exception as e:
         print(f"⚠️ Failed to clear existing events: {e}")

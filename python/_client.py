@@ -4,6 +4,8 @@ import tzlocal
 
 def get_lifelogs(api_key, api_url=os.getenv("LIMITLESS_API_URL") or "https://api.limitless.ai", endpoint="v1/lifelogs", limit=50, batch_size=10, includeMarkdown=True, includeHeadings=False, date=None, timezone=None, direction="asc"):
     all_lifelogs = []
+    seen_ids = set()  # Track IDs to prevent duplicates
+    duplicates_filtered = 0
     cursor = None
     
     # If limit is None, fetch all available lifelogs
@@ -29,6 +31,7 @@ def get_lifelogs(api_key, api_url=os.getenv("LIMITLESS_API_URL") or "https://api
             f"{api_url}/{endpoint}",
             headers={"X-API-Key": api_key},
             params=params,
+            timeout=30  # 30 second timeout
         )
 
         if not response.ok:
@@ -37,9 +40,18 @@ def get_lifelogs(api_key, api_url=os.getenv("LIMITLESS_API_URL") or "https://api
         data = response.json()
         lifelogs = data.get("data", {}).get("lifelogs", [])
         
-        # Add transcripts from this batch
+        # Add transcripts from this batch, deduplicating by ID
         for lifelog in lifelogs:
-            all_lifelogs.append(lifelog)
+            lifelog_id = lifelog.get('id')
+            if lifelog_id and lifelog_id not in seen_ids:
+                seen_ids.add(lifelog_id)
+                all_lifelogs.append(lifelog)
+            elif lifelog_id and lifelog_id in seen_ids:
+                # Duplicate found
+                duplicates_filtered += 1
+            elif not lifelog_id:
+                # If no ID, add anyway (shouldn't happen but be safe)
+                all_lifelogs.append(lifelog)
         
         # Check if we've reached the requested limit
         if limit is not None and len(all_lifelogs) >= limit:
@@ -54,5 +66,9 @@ def get_lifelogs(api_key, api_url=os.getenv("LIMITLESS_API_URL") or "https://api
             
         print(f"Fetched {len(lifelogs)} lifelogs, next cursor: {next_cursor}")
         cursor = next_cursor
+    
+    # Show if duplicates were filtered
+    if duplicates_filtered > 0:
+        print(f"⚠️  Filtered out {duplicates_filtered} duplicate conversation(s) from API results")
     
     return all_lifelogs

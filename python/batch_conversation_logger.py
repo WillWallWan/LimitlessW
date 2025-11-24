@@ -40,13 +40,14 @@ from daily_summary_calendar import (
 class EnhancedBatchLogger:
     """Enhanced batch processor with intelligent rate limit handling"""
     
-    def __init__(self, create_daily_summaries=False):
+    def __init__(self, create_daily_summaries=False, summaries_only=False):
         self.api_key = os.getenv('LIMITLESS_API_KEY')
         self.anthropic_key = os.getenv('ANTHROPIC_API_KEY')
         self.calendar_manager = None
         self.conversations_calendar_id = None
         self.claude_client = None
         self.create_daily_summaries = create_daily_summaries
+        self.summaries_only = summaries_only
         self.stats = {
             'total_days': 0,
             'successful_days': 0,
@@ -119,8 +120,9 @@ class EnhancedBatchLogger:
             prompt = get_individual_conversation_prompt(markdown, title)
             
             # Call Claude API
+            print(f"      🤖 Calling Claude AI...")
             message = self.claude_client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-sonnet-4-5-20250929",
                 max_tokens=1000,
                 temperature=0.3,
                 messages=[
@@ -134,23 +136,37 @@ class EnhancedBatchLogger:
             # Extract and parse the response
             response_text = message.content[0].text.strip()
             
+            # Claude 4.5 often wraps JSON in markdown code blocks, so try extracting that first
+            import re
+            
+            # Try to extract JSON from markdown code blocks first
+            code_block_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', response_text, re.MULTILINE)
+            if code_block_match:
+                try:
+                    summary_data = json.loads(code_block_match.group(1))
+                    print(f"      ✅ Summary generated")
+                    # Reset delay and error tracking on success
+                    self.current_delay = self.base_delay
+                    self.consecutive_errors = 0
+                    self.overload_cooldown = False
+                    return summary_data
+                except json.JSONDecodeError:
+                    pass
+            
+            # Try parsing as pure JSON (for older Claude models)
             try:
                 summary_data = json.loads(response_text)
+                print(f"      ✅ Summary generated")
                 # Reset delay and error tracking on success
                 self.current_delay = self.base_delay
                 self.consecutive_errors = 0
                 self.overload_cooldown = False
                 return summary_data
-            except json.JSONDecodeError as e:
-                print(f"⚠️ JSON parse error for '{title}': {e}")
-                
-                # Try to extract JSON from the response if it's mixed with text
-                import re
-                # Look for JSON object with proper structure
+            except json.JSONDecodeError:
+                # Try other patterns as fallback
                 json_patterns = [
                     r'\{[^{}]*"description"[^{}]*\}',  # Simple JSON with description
                     r'\{[\s\S]*?"description"[\s\S]*?\}(?=\s*$)',  # JSON at end of text
-                    r'```json\s*(\{[\s\S]*?\})\s*```',  # JSON in code blocks
                     r'\{[\s\S]*\}'  # Last resort - any JSON-like structure
                 ]
                 
@@ -163,10 +179,9 @@ class EnhancedBatchLogger:
                 
                 if json_match:
                     try:
-                        # Use group(1) if it exists (for code block pattern), otherwise group()
                         json_text = json_match.group(1) if json_match.groups() else json_match.group()
                         summary_data = json.loads(json_text)
-                        print(f"   ✅ Recovered JSON from mixed response")
+                        print(f"      ✅ Summary generated")
                         return summary_data
                     except:
                         pass
@@ -248,12 +263,15 @@ class EnhancedBatchLogger:
         
         try:
             # Fetch lifelogs from target date
+            print(f"   🔍 Fetching ALL conversations from Limitless API...")
+            print(f"   ⏳ This may take 2-5 minutes with large amounts of data...")
             lifelogs = get_lifelogs(
                 api_key=self.api_key,
                 date=date_str,
                 includeMarkdown=True,
-                limit=100
+                limit=None  # Fetch ALL conversations (no limit)
             )
+            print(f"   📥 Received {len(lifelogs) if lifelogs else 0} total recordings")
             
             if not lifelogs:
                 return True, 0, 0  # No data is not an error
@@ -278,48 +296,55 @@ class EnhancedBatchLogger:
             if not meaningful_conversations:
                 return True, 0, len(lifelogs)
             
+            print(f"   📋 Found {len(meaningful_conversations)} conversations >30s")
+            
             # Clear existing events for this date
-            clear_existing_events(self.calendar_manager, self.conversations_calendar_id, target_date)
+            if not self.summaries_only:
+                print(f"   🗑️  Clearing existing calendar events...")
+                clear_existing_events(self.calendar_manager, self.conversations_calendar_id, target_date)
             
             # If daily summaries enabled, clear existing daily summary too
-            if self.create_daily_summaries:
+            if self.create_daily_summaries or self.summaries_only:
                 clear_existing_daily_summary(self.calendar_manager, self.conversations_calendar_id, target_date)
             
-            # Process each conversation with intelligent rate limiting
+            # Process each conversation with intelligent rate limiting (skip if summaries only)
             created_count = 0
-            for i, lifelog in enumerate(meaningful_conversations, 1):
-                title = lifelog.get('title', 'Untitled')
-                markdown = lifelog.get('markdown', '')
-                
-                # Summarize with retry logic
-                summary = self.summarize_with_retry(markdown, title)
-                
-                # Create calendar event (even if summary failed)
-                event_id = create_individual_calendar_event(
-                    lifelog, summary, self.calendar_manager, self.conversations_calendar_id
-                )
-                
-                if event_id:
-                    created_count += 1
-                
-                # Dynamic delay based on content size and current rate limit status
-                if i < len(meaningful_conversations):
-                    delay = self.calculate_dynamic_delay(markdown)
+            if not self.summaries_only:
+                for i, lifelog in enumerate(meaningful_conversations, 1):
+                    title = lifelog.get('title', 'Untitled')
+                    markdown = lifelog.get('markdown', '')
                     
-                    # If we're in overload cooldown, add extra delay
-                    if self.overload_cooldown:
-                        delay = max(delay * 2, 10)  # Double delay, minimum 10s
+                    print(f"   [{i}/{len(meaningful_conversations)}] Processing: {title[:50]}...")
+                    
+                    # Summarize with retry logic
+                    summary = self.summarize_with_retry(markdown, title)
+                    
+                    # Create calendar event (even if summary failed)
+                    event_id = create_individual_calendar_event(
+                        lifelog, summary, self.calendar_manager, self.conversations_calendar_id
+                    )
+                    
+                    if event_id:
+                        created_count += 1
+                    
+                    # Dynamic delay based on content size and current rate limit status
+                    if i < len(meaningful_conversations):
+                        delay = self.calculate_dynamic_delay(markdown)
                         
-                    # If we've had multiple consecutive errors, be more conservative
-                    if self.consecutive_errors > 2:
-                        delay = max(delay, 15)  # Minimum 15s after multiple errors
-                    
-                    # Use the maximum of calculated delay and current delay
-                    actual_delay = max(delay, self.current_delay)
-                    time.sleep(actual_delay)
+                        # If we're in overload cooldown, add extra delay
+                        if self.overload_cooldown:
+                            delay = max(delay * 2, 10)  # Double delay, minimum 10s
+                            
+                        # If we've had multiple consecutive errors, be more conservative
+                        if self.consecutive_errors > 2:
+                            delay = max(delay, 15)  # Minimum 15s after multiple errors
+                        
+                        # Use the maximum of calculated delay and current delay
+                        actual_delay = max(delay, self.current_delay)
+                        time.sleep(actual_delay)
             
             # Create daily summary if enabled
-            if self.create_daily_summaries and meaningful_conversations:
+            if (self.create_daily_summaries or self.summaries_only) and meaningful_conversations:
                 print(f"   📊 Creating daily summary...")
                 if process_day_summary(
                     meaningful_conversations, 
@@ -378,6 +403,8 @@ class EnhancedBatchLogger:
                 
                 if conversations_found == 0:
                     print(f"   ⚪ No conversations found")
+                elif self.summaries_only:
+                    print(f"   📊 Processed {conversations_found} conversations for daily summary")
                 elif events_created == 0:
                     print(f"   🟡 Found {conversations_found} conversations but none were meaningful (>30s)")
                 else:
@@ -407,15 +434,16 @@ class EnhancedBatchLogger:
         if self.stats['failed_days'] > 0:
             print(f"   • Failed: {self.stats['failed_days']} ❌")
         
-        print(f"\n💬 Conversations:")
-        print(f"   • Total Found: {self.stats['total_conversations']}")
-        print(f"   • Events Created: {self.stats['total_events_created']}")
-        
-        if self.stats['total_conversations'] > 0:
-            avg_per_day = self.stats['total_events_created'] / max(self.stats['successful_days'], 1)
-            print(f"   • Average per Day: {avg_per_day:.1f}")
-            success_rate = (self.stats['total_events_created'] / self.stats['total_conversations']) * 100
-            print(f"   • Success Rate: {success_rate:.1f}%")
+        if not self.summaries_only:
+            print(f"\n💬 Conversations:")
+            print(f"   • Total Found: {self.stats['total_conversations']}")
+            print(f"   • Events Created: {self.stats['total_events_created']}")
+            
+            if self.stats['total_conversations'] > 0:
+                avg_per_day = self.stats['total_events_created'] / max(self.stats['successful_days'], 1)
+                print(f"   • Average per Day: {avg_per_day:.1f}")
+                success_rate = (self.stats['total_events_created'] / self.stats['total_conversations']) * 100
+                print(f"   • Success Rate: {success_rate:.1f}%")
         
         print(f"\n🚦 Rate Limit Management:")
         print(f"   • Automatic Retries: {self.stats['rate_limit_retries']}")
@@ -524,6 +552,9 @@ Examples:
   # Process multiple dates with daily summaries
   python3 batch_conversation_logger.py 2025-08-18 2025-08-19 --daily-summary
   
+  # Create ONLY daily summaries (no individual events)
+  python3 batch_conversation_logger.py --last 7 --summaries-only
+  
   # Mix formats: specific dates and days ago
   python3 batch_conversation_logger.py 2025-08-18 -3 -7
         """
@@ -563,6 +594,12 @@ Examples:
         help='Create all-day summary events for each processed day'
     )
     
+    parser.add_argument(
+        '--summaries-only',
+        action='store_true',
+        help='Only create daily summaries, skip individual conversation events'
+    )
+    
     args = parser.parse_args()
     
     # Parse dates from arguments
@@ -572,8 +609,19 @@ Examples:
         print("❌ No valid dates to process")
         sys.exit(1)
     
+    # Handle summaries_only logic
+    if args.summaries_only:
+        # If summaries_only is set, we always create daily summaries
+        create_daily_summaries = True
+        print("🗓️ Running in summaries-only mode (skipping individual conversation events)")
+    else:
+        create_daily_summaries = args.daily_summary
+    
     # Create and initialize the enhanced logger
-    logger = EnhancedBatchLogger(create_daily_summaries=args.daily_summary)
+    logger = EnhancedBatchLogger(
+        create_daily_summaries=create_daily_summaries,
+        summaries_only=args.summaries_only
+    )
     if not logger.initialize():
         sys.exit(1)
     
