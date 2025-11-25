@@ -320,7 +320,9 @@ def clear_existing_daily_summary(
                         pass
         
         if removed_count > 0:
-            print(f"🗑️ Removed {removed_count} existing daily summary event(s) for {date_str}")
+            print(f"   🗑️ Removed {removed_count} existing daily summary event(s) for {date_str}")
+        else:
+            print(f"   ℹ️ No existing daily summary to clear for {date_str}")
                     
     except Exception as e:
         print(f"⚠️ Error clearing daily summaries: {e}")
