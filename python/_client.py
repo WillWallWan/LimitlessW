@@ -49,10 +49,8 @@ def get_lifelogs(api_key, api_url=os.getenv("LIMITLESS_API_URL") or "https://api
             elif lifelog_id and lifelog_id in seen_ids:
                 # Duplicate found
                 duplicates_filtered += 1
-                print(f"   🔁 Skipping duplicate: {lifelog.get('title', 'Unknown')[:50]}")
             elif not lifelog_id:
                 # If no ID, add anyway (shouldn't happen but be safe)
-                print(f"   ⚠️ Lifelog has no ID: {lifelog.get('title', 'Unknown')[:50]}")
                 all_lifelogs.append(lifelog)
         
         # Check if we've reached the requested limit

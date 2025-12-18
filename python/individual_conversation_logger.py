@@ -274,38 +274,27 @@ def clear_existing_events(calendar_manager, calendar_id, target_date):
         
         all_events = events_result.get('items', [])
         
-        print(f"   🔍 Found {len(all_events)} total events in range...")
+        print(f"   🔍 Found {len(all_events)} total events in range, filtering to {date_str}...")
         
-        # Filter to only events on the target date, excluding daily summaries
+        # Filter to only events that actually occur on the target date
         events = []
         for event in all_events:
-            summary = event.get('summary', '')
             event_start = event.get('start', {})
-            is_all_day = 'date' in event_start
-            
-            # Skip daily summaries
-            if 'Daily Summary' in summary and is_all_day:
-                continue
-            
-            # Check if event is on target date
-            is_on_target_date = False
-            
-            # For timed events, extract date from dateTime string
+            # For timed events, check if the date part matches
             if 'dateTime' in event_start:
-                dt_str = event_start['dateTime']
-                # Extract just the date part (YYYY-MM-DD) before the 'T'
-                event_date_str = dt_str.split('T')[0] if 'T' in dt_str else dt_str[:10]
-                if event_date_str == date_str:
-                    is_on_target_date = True
-            # For all-day events
+                try:
+                    event_dt = datetime.fromisoformat(event_start['dateTime'].replace('Z', '+00:00'))
+                    if event_dt.date() == target_date:
+                        events.append(event)
+                except Exception as e:
+                    print(f"   ⚠️ Error parsing event date: {e}")
+                    pass
+            # For all-day events, check the date field
             elif 'date' in event_start:
                 if event_start['date'] == date_str:
-                    is_on_target_date = True
-            
-            if is_on_target_date:
-                events.append(event)
+                    events.append(event)
         
-        print(f"   📊 {len(events)} conversation events on {date_str} to clear")
+        print(f"   📊 Filtered to {len(events)} events on {date_str}")
         
         if events:
             # Filter out daily summary events
