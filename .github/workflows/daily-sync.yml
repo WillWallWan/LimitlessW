@@ -1,0 +1,42 @@
+name: Daily Limitless Sync
+
+on:
+  schedule:
+    # Runs at 7am China Standard Time (UTC+8)
+    # 7:00 CST = 23:00 UTC (previous day)
+    - cron: '0 23 * * *'
+  workflow_dispatch:  # Allow manual trigger from GitHub UI
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        working-directory: python
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Restore Google OAuth token
+        working-directory: python
+        run: echo "${{ secrets.GOOGLE_TOKEN_PICKLE }}" | base64 -d > token.pickle
+      
+      - name: Restore Google credentials
+        working-directory: python
+        run: echo "${{ secrets.GOOGLE_CREDENTIALS }}" | base64 -d > credentials.json
+      
+      - name: Run daily sync
+        working-directory: python
+        env:
+          LIMITLESS_API_KEY: ${{ secrets.LIMITLESS_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python3 batch_conversation_logger.py --daily-summary

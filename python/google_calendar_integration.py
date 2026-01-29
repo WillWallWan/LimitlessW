@@ -28,6 +28,8 @@ class GoogleCalendarTodoManager:
         
     def authenticate(self):
         """Authenticate with Google APIs"""
+        from google.auth.exceptions import RefreshError
+        
         creds = None
         
         # Load existing token
@@ -38,8 +40,16 @@ class GoogleCalendarTodoManager:
         # If no valid credentials, request authorization
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
+                try:
+                    creds.refresh(Request())
+                except RefreshError:
+                    # Token expired or revoked - delete it and re-authenticate
+                    print(f"⚠️  Token expired or revoked. Re-authenticating...")
+                    os.remove(self.token_file)
+                    creds = None
+            
+            # If still no valid creds, run the OAuth flow
+            if not creds or not creds.valid:
                 if not os.path.exists(self.credentials_file):
                     print(f"❌ Please download OAuth credentials from Google Cloud Console")
                     print(f"   Save them as '{self.credentials_file}' in this directory")

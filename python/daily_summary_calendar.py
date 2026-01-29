@@ -294,14 +294,25 @@ def clear_existing_daily_summary(
         prev_day = (target_date - timedelta(days=1)).strftime('%Y-%m-%d')
         next_day = (target_date + timedelta(days=1)).strftime('%Y-%m-%d')
         
-        events_result = calendar_manager.calendar_service.events().list(
-            calendarId=calendar_id,
-            timeMin=f"{prev_day}T00:00:00Z",
-            timeMax=f"{next_day}T23:59:59Z",
-            singleEvents=True
-        ).execute()
+        # Handle pagination to get ALL events
+        events = []
+        page_token = None
         
-        events = events_result.get('items', [])
+        while True:
+            events_result = calendar_manager.calendar_service.events().list(
+                calendarId=calendar_id,
+                timeMin=f"{prev_day}T00:00:00Z",
+                timeMax=f"{next_day}T23:59:59Z",
+                singleEvents=True,
+                maxResults=2500,
+                pageToken=page_token
+            ).execute()
+            
+            events.extend(events_result.get('items', []))
+            page_token = events_result.get('nextPageToken')
+            
+            if not page_token:
+                break
         removed_count = 0
         
         for event in events:
