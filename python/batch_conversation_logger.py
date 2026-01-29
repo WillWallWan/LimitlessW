@@ -28,7 +28,8 @@ load_dotenv()
 from individual_conversation_logger import (
     get_individual_conversation_prompt,
     create_individual_calendar_event,
-    clear_existing_events
+    clear_existing_events,
+    get_existing_lifelog_ids
 )
 
 # Import daily summary functions
@@ -40,7 +41,7 @@ from daily_summary_calendar import (
 class EnhancedBatchLogger:
     """Enhanced batch processor with intelligent rate limit handling"""
     
-    def __init__(self, create_daily_summaries=False, summaries_only=False):
+    def __init__(self, create_daily_summaries=False, summaries_only=False, force=False):
         self.api_key = os.getenv('LIMITLESS_API_KEY')
         self.anthropic_key = os.getenv('ANTHROPIC_API_KEY')
         self.calendar_manager = None
@@ -48,12 +49,14 @@ class EnhancedBatchLogger:
         self.claude_client = None
         self.create_daily_summaries = create_daily_summaries
         self.summaries_only = summaries_only
+        self.force = force  # If True, clear and recreate all events
         self.stats = {
             'total_days': 0,
             'successful_days': 0,
             'failed_days': 0,
             'total_conversations': 0,
             'total_events_created': 0,
+            'skipped_duplicates': 0,  # Track skipped duplicates
             'daily_summaries_created': 0,
             'rate_limit_retries': 0,
             'failed_summaries': 0,
@@ -274,7 +277,7 @@ class EnhancedBatchLogger:
             print(f"   📥 Received {len(lifelogs) if lifelogs else 0} total recordings")
             
             if not lifelogs:
-                return True, 0, 0  # No data is not an error
+                return True, 0, 0, 0  # No data is not an error
             
             # Filter meaningful conversations (>30 seconds)
             meaningful_conversations = []
@@ -294,25 +297,43 @@ class EnhancedBatchLogger:
                         pass
             
             if not meaningful_conversations:
-                return True, 0, len(lifelogs)
+                return True, 0, len(lifelogs), 0
             
             print(f"   📋 Found {len(meaningful_conversations)} conversations >30s")
             
-            # Clear existing events for this date
+            # Get existing lifelog IDs to skip duplicates (unless --force is used)
+            existing_ids = set()
             if not self.summaries_only:
-                print(f"   🗑️  Clearing existing calendar events...")
-                clear_existing_events(self.calendar_manager, self.conversations_calendar_id, target_date)
+                if self.force:
+                    # Force mode: clear all existing events
+                    print(f"   🗑️  Force mode: Clearing existing calendar events...")
+                    clear_existing_events(self.calendar_manager, self.conversations_calendar_id, target_date)
+                else:
+                    # Normal mode: get existing IDs to skip duplicates
+                    print(f"   🔍 Checking for existing events...")
+                    existing_ids = get_existing_lifelog_ids(self.calendar_manager, self.conversations_calendar_id, target_date)
+                    if existing_ids:
+                        print(f"   📋 Found {len(existing_ids)} existing events, will skip duplicates")
             
-            # If daily summaries enabled, clear existing daily summary too
-            if self.create_daily_summaries or self.summaries_only:
+            # If daily summaries enabled, clear existing daily summary too (only in force mode or if creating summaries)
+            if (self.create_daily_summaries or self.summaries_only) and self.force:
                 clear_existing_daily_summary(self.calendar_manager, self.conversations_calendar_id, target_date)
             
             # Process each conversation with intelligent rate limiting (skip if summaries only)
             created_count = 0
+            skipped_count = 0
             if not self.summaries_only:
                 for i, lifelog in enumerate(meaningful_conversations, 1):
                     title = lifelog.get('title', 'Untitled')
                     markdown = lifelog.get('markdown', '')
+                    lifelog_id = lifelog.get('id', '')
+                    
+                    # Skip if this lifelog already has a calendar event
+                    if lifelog_id and lifelog_id in existing_ids:
+                        print(f"   [{i}/{len(meaningful_conversations)}] ⏭️  Skipping (already exists): {title[:40]}...")
+                        skipped_count += 1
+                        self.stats['skipped_duplicates'] += 1
+                        continue
                     
                     print(f"   [{i}/{len(meaningful_conversations)}] Processing: {title[:50]}...")
                     
@@ -357,11 +378,11 @@ class EnhancedBatchLogger:
                 else:
                     print(f"   ⚠️ Failed to create daily summary")
             
-            return True, created_count, len(meaningful_conversations)
+            return True, created_count, len(meaningful_conversations), skipped_count
             
         except Exception as e:
             self.stats['errors'].append(f"{date_str}: {str(e)}")
-            return False, 0, 0
+            return False, 0, 0, 0
     
     def process_dates(self, dates: List[date]):
         """Process multiple dates with enhanced progress tracking"""
@@ -394,7 +415,7 @@ class EnhancedBatchLogger:
                 print("   ⚠️ Server stress detected - using conservative delays")
             
             # Process the day
-            success, events_created, conversations_found = self.process_single_day(target_date)
+            success, events_created, conversations_found, skipped = self.process_single_day(target_date)
             
             if success:
                 self.stats['successful_days'] += 1
@@ -405,10 +426,13 @@ class EnhancedBatchLogger:
                     print(f"   ⚪ No conversations found")
                 elif self.summaries_only:
                     print(f"   📊 Processed {conversations_found} conversations for daily summary")
-                elif events_created == 0:
+                elif events_created == 0 and skipped == 0:
                     print(f"   🟡 Found {conversations_found} conversations but none were meaningful (>30s)")
+                elif events_created == 0 and skipped > 0:
+                    print(f"   ⏭️  All {skipped} conversations already exist, nothing new to add")
                 else:
-                    print(f"   ✅ Created {events_created} events from {conversations_found} conversations")
+                    skip_msg = f", skipped {skipped} duplicates" if skipped > 0 else ""
+                    print(f"   ✅ Created {events_created} events from {conversations_found} conversations{skip_msg}")
                     if self.stats['rate_limit_retries'] > 0:
                         print(f"   🔄 Handled {self.stats['rate_limit_retries']} rate limit retries")
             else:
@@ -438,12 +462,17 @@ class EnhancedBatchLogger:
             print(f"\n💬 Conversations:")
             print(f"   • Total Found: {self.stats['total_conversations']}")
             print(f"   • Events Created: {self.stats['total_events_created']}")
+            if self.stats['skipped_duplicates'] > 0:
+                print(f"   • Skipped (duplicates): {self.stats['skipped_duplicates']}")
             
             if self.stats['total_conversations'] > 0:
                 avg_per_day = self.stats['total_events_created'] / max(self.stats['successful_days'], 1)
                 print(f"   • Average per Day: {avg_per_day:.1f}")
-                success_rate = (self.stats['total_events_created'] / self.stats['total_conversations']) * 100
-                print(f"   • Success Rate: {success_rate:.1f}%")
+                # Adjust success rate to account for skipped duplicates
+                processed = self.stats['total_events_created'] + self.stats['skipped_duplicates']
+                if processed > 0:
+                    new_rate = (self.stats['total_events_created'] / self.stats['total_conversations']) * 100
+                    print(f"   • New Events Rate: {new_rate:.1f}%")
         
         print(f"\n🚦 Rate Limit Management:")
         print(f"   • Automatic Retries: {self.stats['rate_limit_retries']}")
@@ -538,6 +567,8 @@ Enhanced Features:
   ✅ Graceful degradation (creates events even if AI summary fails)
   ✅ Detailed progress and error reporting
   ✅ Optional daily summary all-day events
+  ✅ Duplicate detection - skips conversations already in calendar
+  ✅ --force flag to override and recreate all events
 
 Examples:
   # Process yesterday (default)
@@ -554,6 +585,9 @@ Examples:
   
   # Create ONLY daily summaries (no individual events)
   python3 batch_conversation_logger.py --last 7 --summaries-only
+  
+  # Force recreate all events (ignores duplicates, clears existing)
+  python3 batch_conversation_logger.py --last 7 --force
   
   # Mix formats: specific dates and days ago
   python3 batch_conversation_logger.py 2025-08-18 -3 -7
@@ -600,6 +634,12 @@ Examples:
         help='Only create daily summaries, skip individual conversation events'
     )
     
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Force recreate all events (clear existing and recreate, ignoring duplicates)'
+    )
+    
     args = parser.parse_args()
     
     # Parse dates from arguments
@@ -620,7 +660,8 @@ Examples:
     # Create and initialize the enhanced logger
     logger = EnhancedBatchLogger(
         create_daily_summaries=create_daily_summaries,
-        summaries_only=args.summaries_only
+        summaries_only=args.summaries_only,
+        force=args.force
     )
     if not logger.initialize():
         sys.exit(1)
