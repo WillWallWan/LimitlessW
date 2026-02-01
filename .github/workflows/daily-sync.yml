@@ -2,9 +2,9 @@ name: Daily Limitless Sync
 
 on:
   schedule:
-    # Runs at 7am China Standard Time (UTC+8)
-    # 7:00 CST = 23:00 UTC (previous day)
-    - cron: '0 23 * * *'
+    # Runs at 9am China Standard Time (UTC+8)
+    # 9:00 CST = 01:00 UTC (same day, so "yesterday" calc works correctly)
+    - cron: '0 1 * * *'
   workflow_dispatch:  # Allow manual trigger from GitHub UI
 
 jobs:
