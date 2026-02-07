@@ -40,3 +40,42 @@ jobs:
           LIMITLESS_API_KEY: ${{ secrets.LIMITLESS_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python3 batch_conversation_logger.py --daily-summary
+
+      - name: Update Google token secret if refreshed
+        if: always()
+        working-directory: python
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          if [ -f token.pickle ]; then
+            NEW_TOKEN=$(base64 -w 0 token.pickle)
+            
+            # Get the repo's public key for encrypting secrets
+            KEY_RESPONSE=$(curl -s -H "Authorization: token $GH_PAT" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/secrets/public-key")
+            
+            KEY_ID=$(echo "$KEY_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['key_id'])")
+            PUBLIC_KEY=$(echo "$KEY_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['key'])")
+            
+            # Encrypt and update the secret
+            ENCRYPTED=$(python3 -c "
+          from base64 import b64encode, b64decode
+          from nacl import encoding, public
+          
+          public_key = '$PUBLIC_KEY'
+          secret_value = '''$NEW_TOKEN'''
+          
+          public_key_bytes = b64decode(public_key)
+          sealed_box = public.SealedBox(public.PublicKey(public_key_bytes))
+          encrypted = sealed_box.encrypt(secret_value.encode('utf-8'))
+          print(b64encode(encrypted).decode('utf-8'))
+          ")
+            
+            curl -s -X PUT -H "Authorization: token $GH_PAT" \
+              -H "Content-Type: application/json" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/secrets/GOOGLE_TOKEN_PICKLE" \
+              -d "{\"encrypted_value\":\"$ENCRYPTED\",\"key_id\":\"$KEY_ID\"}"
+            
+            echo "✅ Updated GOOGLE_TOKEN_PICKLE secret"
+          fi
