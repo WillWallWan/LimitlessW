@@ -29,27 +29,59 @@ class GoogleCalendarTodoManager:
     def authenticate(self):
         """Authenticate with Google APIs"""
         from google.auth.exceptions import RefreshError
+        import time
         
         creds = None
+        is_headless = os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS')
         
         # Load existing token
         if os.path.exists(self.token_file):
             with open(self.token_file, 'rb') as token:
                 creds = pickle.load(token)
         
-        # If no valid credentials, request authorization
+        # If no valid credentials, try to refresh
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                try:
-                    creds.refresh(Request())
-                except RefreshError:
-                    # Token expired or revoked - delete it and re-authenticate
-                    print(f"⚠️  Token expired or revoked. Re-authenticating...")
-                    os.remove(self.token_file)
-                    creds = None
+                # Try refreshing with retries (token refresh can be flaky)
+                max_retries = 3
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        print(f"🔄 Refreshing Google OAuth token (attempt {attempt}/{max_retries})...")
+                        creds.refresh(Request())
+                        print(f"✅ Token refreshed successfully")
+                        break
+                    except RefreshError as e:
+                        if attempt < max_retries:
+                            print(f"⚠️  Refresh attempt {attempt} failed: {e}")
+                            time.sleep(2 * attempt)
+                        else:
+                            print(f"❌ Token refresh failed after {max_retries} attempts: {e}")
+                            if is_headless:
+                                print(f"❌ Running in CI/headless mode - cannot open browser for re-auth")
+                                print(f"   Please update GOOGLE_TOKEN_PICKLE secret with a fresh token")
+                                return False
+                            # Only fall through to browser auth locally
+                            print(f"⚠️  Token expired or revoked. Re-authenticating...")
+                            os.remove(self.token_file)
+                            creds = None
+                    except Exception as e:
+                        if attempt < max_retries:
+                            print(f"⚠️  Refresh attempt {attempt} failed: {e}")
+                            time.sleep(2 * attempt)
+                        else:
+                            print(f"❌ Unexpected error refreshing token: {e}")
+                            if is_headless:
+                                return False
+                            os.remove(self.token_file)
+                            creds = None
             
-            # If still no valid creds, run the OAuth flow
+            # If still no valid creds, run the OAuth flow (only works locally)
             if not creds or not creds.valid:
+                if is_headless:
+                    print(f"❌ No valid credentials and cannot open browser in CI mode")
+                    print(f"   Please run locally first, then update GOOGLE_TOKEN_PICKLE secret")
+                    return False
+                    
                 if not os.path.exists(self.credentials_file):
                     print(f"❌ Please download OAuth credentials from Google Cloud Console")
                     print(f"   Save them as '{self.credentials_file}' in this directory")
