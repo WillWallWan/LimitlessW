@@ -51,66 +51,85 @@ CONVERSATION TRANSCRIPT:
 
 Return ONLY valid JSON with the above fields:"""
 
-def summarize_individual_conversation(conversation_content, conversation_title):
-    """Use Claude to summarize an individual conversation"""
-    
+def summarize_individual_conversation(conversation_content, conversation_title, max_retries=4):
+    """Use Claude to summarize an individual conversation (retries transient errors)"""
+
     # Initialize Claude client
     api_key = os.getenv('ANTHROPIC_API_KEY')
     if not api_key:
         print("❌ ANTHROPIC_API_KEY not found in .env file")
         return None
-    
+
     client = anthropic.Anthropic(api_key=api_key)
-    
+
     # Generate the prompt
     prompt = get_individual_conversation_prompt(conversation_content, conversation_title)
-    
-    try:
-        # Call Claude API
-        message = client.messages.create(
-            model="claude-sonnet-4-5-20250929",
-            max_tokens=1000,
-            temperature=0.3,
-            messages=[
-                {
-                    "role": "user", 
-                    "content": prompt
-                }
-            ]
-        )
-        
-        # Extract and parse the response
-        response_text = message.content[0].text.strip()
-        
-        # Claude 4.5 often wraps JSON in markdown code blocks
-        import re
-        code_block_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', response_text, re.MULTILINE)
-        if code_block_match:
-            try:
-                summary_data = json.loads(code_block_match.group(1))
-                return summary_data
-            except json.JSONDecodeError:
-                pass
-        
-        # Try pure JSON parse
+
+    # Call Claude API with retry on transient failures. Note: 4xx errors such as
+    # "credit balance too low" (billing) or auth failures are NOT retried — retrying
+    # them is pointless and just hides the real problem.
+    message = None
+    for attempt in range(1, max_retries + 1):
         try:
-            summary_data = json.loads(response_text)
-            return summary_data
-        except json.JSONDecodeError as e:
-            print(f"⚠️ JSON parse error for '{conversation_title}': {e}")
-            # Return a basic structure if JSON parsing fails
-            return {
-                "description": response_text[:200] + "..." if len(response_text) > 200 else response_text,
-                "key_information": "None",
-                "decisions_made": "None", 
-                "problems_solutions": "None",
-                "people_involved": "None",
-                "conversation_type": "general"
-            }
-        
-    except Exception as e:
-        print(f"❌ Error summarizing conversation '{conversation_title}': {e}")
+            message = client.messages.create(
+                model="claude-sonnet-4-5-20250929",
+                max_tokens=1000,
+                temperature=0.3,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            break  # success
+        except anthropic.RateLimitError:
+            wait = min(2 ** attempt, 60)  # 2, 4, 8, 16s
+            print(f"   ⏳ Rate limit on '{conversation_title}': retry {attempt}/{max_retries} in {wait}s")
+            time.sleep(wait)
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError):
+            wait = min(5 * attempt, 60)
+            print(f"   ⏳ Connection/timeout on '{conversation_title}': retry {attempt}/{max_retries} in {wait}s")
+            time.sleep(wait)
+        except anthropic.APIStatusError as e:
+            status = getattr(e, "status_code", None)
+            # Retry only server-side / overload errors; everything else is fatal.
+            if (status and 500 <= status < 600) or "overloaded" in str(e).lower():
+                wait = min(5 * attempt, 60)
+                print(f"   ⏳ Server error {status} on '{conversation_title}': retry {attempt}/{max_retries} in {wait}s")
+                time.sleep(wait)
+            else:
+                print(f"❌ Error summarizing conversation '{conversation_title}': {e}")
+                return None
+        except Exception as e:
+            print(f"❌ Error summarizing conversation '{conversation_title}': {e}")
+            return None
+
+    if message is None:
+        print(f"❌ Max retries exceeded summarizing '{conversation_title}'")
         return None
+
+    # Extract and parse the response
+    response_text = message.content[0].text.strip()
+
+    # Claude 4.5 often wraps JSON in markdown code blocks
+    import re
+    code_block_match = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', response_text, re.MULTILINE)
+    if code_block_match:
+        try:
+            return json.loads(code_block_match.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    # Try pure JSON parse
+    try:
+        return json.loads(response_text)
+    except json.JSONDecodeError as e:
+        print(f"⚠️ JSON parse error for '{conversation_title}': {e}")
+        # Return a basic structure if JSON parsing fails
+        return {
+            "description": response_text[:200] + "..." if len(response_text) > 200 else response_text,
+            "key_information": "None",
+            "decisions_made": "None",
+            "problems_solutions": "None",
+            "people_involved": "None",
+            "conversation_type": "general"
+        }
 
 def create_individual_calendar_event(lifelog, summary, calendar_manager, calendar_id):
     """Create a calendar event for an individual conversation"""
@@ -359,32 +378,30 @@ def get_existing_lifelog_ids(calendar_manager, calendar_id, target_date):
         ).execute()
         
         all_events = events_result.get('items', [])
-        
-        # Filter to only events that actually occur on the target date
+
+        # Build a robust dedup index keyed by BOTH:
+        #   1. the lifelog ID embedded in the description (legacy), and
+        #   2. the absolute start instant ("t<epoch-minute>"), which is
+        #      timezone-invariant and survives Limitless reassigning lifelog IDs.
+        # We index EVERY event in the queried window (not just the target date)
+        # so conversations that shift days across timezones still match.
         for event in all_events:
             event_start = event.get('start', {})
-            event_date_matches = False
-            
-            # For timed events, check if the date part matches
+
+            # (2) start-instant key — for timed events
             if 'dateTime' in event_start:
                 try:
-                    event_dt = datetime.fromisoformat(event_start['dateTime'].replace('Z', '+00:00'))
-                    if event_dt.date() == target_date:
-                        event_date_matches = True
-                except:
+                    ev_dt = datetime.fromisoformat(event_start['dateTime'].replace('Z', '+00:00'))
+                    existing_ids.add(f"t{int(ev_dt.timestamp() // 60)}")
+                except Exception:
                     pass
-            # For all-day events, check the date field
-            elif 'date' in event_start:
-                if event_start['date'] == date_str:
-                    event_date_matches = True
-            
-            if event_date_matches:
-                # Extract lifelog ID from description
-                description = event.get('description', '')
-                match = re.search(r'🔗 Lifelog ID: ([a-zA-Z0-9_-]+)', description)
-                if match:
-                    existing_ids.add(match.group(1))
-        
+
+            # (1) legacy lifelog ID key
+            description = event.get('description', '') or ''
+            match = re.search(r'Lifelog ID: ([a-zA-Z0-9_-]+)', description)
+            if match:
+                existing_ids.add(match.group(1))
+
         return existing_ids
         
     except Exception as e:

@@ -41,7 +41,7 @@ from daily_summary_calendar import (
 class EnhancedBatchLogger:
     """Enhanced batch processor with intelligent rate limit handling"""
     
-    def __init__(self, create_daily_summaries=False, summaries_only=False, force=False):
+    def __init__(self, create_daily_summaries=False, summaries_only=False, force=False, timezone="America/New_York"):
         self.api_key = os.getenv('LIMITLESS_API_KEY')
         self.anthropic_key = os.getenv('ANTHROPIC_API_KEY')
         self.calendar_manager = None
@@ -50,6 +50,12 @@ class EnhancedBatchLogger:
         self.create_daily_summaries = create_daily_summaries
         self.summaries_only = summaries_only
         self.force = force  # If True, clear and recreate all events
+        # Timezone used to decide which conversations fall on a given date.
+        # Defaults to US Eastern (events are stored in America/New_York), so the
+        # result is independent of the machine's local timezone. Without this,
+        # tzlocal() is used, and a machine set to another zone fetches the wrong
+        # day's conversations.
+        self.timezone = timezone
         self.stats = {
             'total_days': 0,
             'successful_days': 0,
@@ -272,7 +278,8 @@ class EnhancedBatchLogger:
                 api_key=self.api_key,
                 date=date_str,
                 includeMarkdown=True,
-                limit=None  # Fetch ALL conversations (no limit)
+                limit=None,  # Fetch ALL conversations (no limit)
+                timezone=self.timezone  # Fixed tz so machine timezone doesn't shift the day
             )
             print(f"   📥 Received {len(lifelogs) if lifelogs else 0} total recordings")
             
@@ -301,19 +308,21 @@ class EnhancedBatchLogger:
             
             print(f"   📋 Found {len(meaningful_conversations)} conversations >30s")
             
-            # Get existing lifelog IDs to skip duplicates (unless --force is used)
+            # Build a robust dedup index so re-runs never create duplicates, even
+            # when Limitless reassigns lifelog IDs or the machine timezone drifts.
+            # In --force mode we clear the date first, then STILL index whatever
+            # remains, so any events the clear missed (timezone-boundary cases)
+            # are not duplicated.
             existing_ids = set()
             if not self.summaries_only:
                 if self.force:
-                    # Force mode: clear all existing events
                     print(f"   🗑️  Force mode: Clearing existing calendar events...")
                     clear_existing_events(self.calendar_manager, self.conversations_calendar_id, target_date)
                 else:
-                    # Normal mode: get existing IDs to skip duplicates
                     print(f"   🔍 Checking for existing events...")
-                    existing_ids = get_existing_lifelog_ids(self.calendar_manager, self.conversations_calendar_id, target_date)
-                    if existing_ids:
-                        print(f"   📋 Found {len(existing_ids)} existing events, will skip duplicates")
+                existing_ids = get_existing_lifelog_ids(self.calendar_manager, self.conversations_calendar_id, target_date)
+                if existing_ids:
+                    print(f"   📋 Dedup index built ({len(existing_ids)} keys); duplicates will be skipped")
             
             # If daily summaries enabled, clear existing daily summary too (only in force mode or if creating summaries)
             if (self.create_daily_summaries or self.summaries_only) and self.force:
@@ -327,13 +336,27 @@ class EnhancedBatchLogger:
                     title = lifelog.get('title', 'Untitled')
                     markdown = lifelog.get('markdown', '')
                     lifelog_id = lifelog.get('id', '')
-                    
-                    # Skip if this lifelog already has a calendar event
-                    if lifelog_id and lifelog_id in existing_ids:
+
+                    # Robust duplicate check: match on lifelog ID (legacy) OR the
+                    # absolute start instant (survives ID reassignment & timezone drift).
+                    start_key = None
+                    start_time = lifelog.get('startTime', '')
+                    if start_time:
+                        try:
+                            start_key = f"t{int(datetime.fromisoformat(start_time.replace('Z', '+00:00')).timestamp() // 60)}"
+                        except Exception:
+                            start_key = None
+
+                    already_exists = (lifelog_id and lifelog_id in existing_ids) or (start_key and start_key in existing_ids)
+                    if already_exists:
                         print(f"   [{i}/{len(meaningful_conversations)}] ⏭️  Skipping (already exists): {title[:40]}...")
                         skipped_count += 1
                         self.stats['skipped_duplicates'] += 1
                         continue
+
+                    # Track this conversation so duplicates within the SAME run are skipped too
+                    if start_key:
+                        existing_ids.add(start_key)
                     
                     print(f"   [{i}/{len(meaningful_conversations)}] Processing: {title[:50]}...")
                     
@@ -639,7 +662,15 @@ Examples:
         action='store_true',
         help='Force recreate all events (clear existing and recreate, ignoring duplicates)'
     )
-    
+
+    parser.add_argument(
+        '--timezone',
+        default='America/New_York',
+        help='Timezone for deciding which conversations fall on each date '
+             '(default: America/New_York). Set this to your real timezone so the '
+             "machine's local timezone doesn't shift conversations to the wrong day."
+    )
+
     args = parser.parse_args()
     
     # Parse dates from arguments
@@ -661,8 +692,10 @@ Examples:
     logger = EnhancedBatchLogger(
         create_daily_summaries=create_daily_summaries,
         summaries_only=args.summaries_only,
-        force=args.force
+        force=args.force,
+        timezone=args.timezone
     )
+    print(f"🌐 Using timezone: {args.timezone}")
     if not logger.initialize():
         sys.exit(1)
     
